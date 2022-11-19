@@ -92,7 +92,7 @@ def start_handler(message: telebot.types.Message):
             "enemy_info": {"name": "wolf", "lvl": 1, "atk": 1, "def": 0, "hp_now": 10, "hp_max": 10,
                            "crit": 0, "crit_chance": 0, "dodge": 0, "dodge_chance": 0, "constitution": 0},
             "enemy_found": False,
-            "levelup": 3,
+            "level_up": 3,
             "in_battle": False,
             "relax": False
         }
@@ -105,7 +105,7 @@ def start_handler(message: telebot.types.Message):
 "Поднять уклонение", чтобы с большим шансом уклониться от вражеской атаки
                          """)
         level_handler(message)
-    elif info[message.chat.id]["levelup"]:
+    elif info[message.chat.id]["level_up"]:
         bot.send_message(chat_id=message.chat.id,
                          text="Сначала распределите очки характеристик")
     elif info[message.chat.id]["in_battle"]:
@@ -153,7 +153,7 @@ def search_handler(message: telebot.types.Message):
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["levelup"]:
+    if info[message.chat.id]["level_up"]:
         bot.send_message(chat_id=message.chat.id,
                          text="Сначала распределите очки характеристик")
     elif info[message.chat.id]["in_battle"]:
@@ -225,7 +225,7 @@ def attack_handler(message: telebot.types.Message):
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["levelup"]:
+    if info[message.chat.id]["level_up"]:
         bot.send_message(chat_id=message.chat.id,
                          text="Сначала распределите очки характеристик")
     elif info[message.chat.id]["enemy_found"]:
@@ -257,7 +257,7 @@ def attack_handler(message: telebot.types.Message):
                              """)
             info[message.chat.id]["user_info"]["exp_now"] += info[message.chat.id]["enemy_info"]["lvl"]
             if info[message.chat.id]["user_info"]["exp_now"] >= info[message.chat.id]["user_info"]["exp_need"]:
-                info[message.chat.id]["levelup"] = 3
+                info[message.chat.id]["level_up"] = 3
                 info[message.chat.id]["user_info"]["lvl"] += 1
                 info[message.chat.id]["user_info"]["exp_now"] = 0
                 info[message.chat.id]["user_info"]["exp_need"] = info[message.chat.id]["user_info"]["lvl"] * 10
@@ -315,14 +315,14 @@ def level_handler(message: telebot.types.Message):
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["levelup"]:
+    if info[message.chat.id]["level_up"]:
         info[message.chat.id]["user_info"]["hp_now"] = info[message.chat.id]["user_info"]["hp_max"]
         info_handler(message)
         markup = create_keyboard(["Поднять атаку", "Поднять защиту", "Поднять телосложение",
                                   "Поднять критический удар", "Поднять уклонение"])
         bot.send_message(chat_id=message.chat.id,
                          text=f"""
-Осталось распределить {info[message.chat.id]["levelup"]} ед. характеристик
+Осталось распределить {info[message.chat.id]["level_up"]} ед. характеристик
                          """, reply_markup=markup)
     else:
         bot.send_message(chat_id=message.chat.id,
@@ -334,12 +334,12 @@ def level_handler(message: telebot.types.Message):
 
 @bot.message_handler(commands=["point_to_attack"])
 def plus_attack_handler(message: telebot.types.Message):
-    print(message.chat.id, "in lwlup +att")
+    print(message.chat.id, "in lvlup +att")
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["levelup"]:
-        info[message.chat.id]["levelup"] -= 1
+    if info[message.chat.id]["level_up"]:
+        info[message.chat.id]["level_up"] -= 1
         info[message.chat.id]["user_info"]["atk"] += 1
         level_handler(message)
     else:
@@ -349,12 +349,12 @@ def plus_attack_handler(message: telebot.types.Message):
 
 @bot.message_handler(commands=["point_to_defence"])
 def plus_defence_handler(message: telebot.types.Message):
-    print(message.chat.id, "in lwlup +def")
+    print(message.chat.id, "in lvlup +def")
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["levelup"]:
-        info[message.chat.id]["levelup"] -= 1
+    if info[message.chat.id]["level_up"]:
+        info[message.chat.id]["level_up"] -= 1
         info[message.chat.id]["user_info"]["def"] += 1
         level_handler(message)
     else:
@@ -364,12 +364,12 @@ def plus_defence_handler(message: telebot.types.Message):
 
 @bot.message_handler(commands=["point_to_constitution"])
 def plus_constitution_handler(message: telebot.types.Message):
-    print(message.chat.id, "in lwlup +con")
+    print(message.chat.id, "in lvlup +con")
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["levelup"]:
-        info[message.chat.id]["levelup"] -= 1
+    if info[message.chat.id]["level_up"]:
+        info[message.chat.id]["level_up"] -= 1
         info[message.chat.id]["user_info"]["constitution"] += 1
         info[message.chat.id]["user_info"]["hp_max"] += 10
         info[message.chat.id]["user_info"]["hp_now"] = info[message.chat.id]["user_info"]["hp_max"]
@@ -381,12 +381,12 @@ def plus_constitution_handler(message: telebot.types.Message):
 
 @bot.message_handler(commands=["point_to_crit"])
 def plus_crit_handler(message: telebot.types.Message):
-    print(message.chat.id, "in lwlup +crit")
+    print(message.chat.id, "in lvlup +crit")
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["levelup"]:
-        info[message.chat.id]["levelup"] -= 1
+    if info[message.chat.id]["level_up"]:
+        info[message.chat.id]["level_up"] -= 1
         info[message.chat.id]["user_info"]["crit"] += 1
         info[message.chat.id]["user_info"]["crit_chance"] = chance(info[message.chat.id]["user_info"]["crit"])
         level_handler(message)
@@ -397,12 +397,12 @@ def plus_crit_handler(message: telebot.types.Message):
 
 @bot.message_handler(commands=["point_to_dodge"])
 def plus_dodge_handler(message: telebot.types.Message):
-    print(message.chat.id, "in lwlup +dodge")
+    print(message.chat.id, "in lvlup +dodge")
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["levelup"]:
-        info[message.chat.id]["levelup"] -= 1
+    if info[message.chat.id]["level_up"]:
+        info[message.chat.id]["level_up"] -= 1
         info[message.chat.id]["user_info"]["dodge"] += 1
         info[message.chat.id]["user_info"]["dodge_chance"] = chance(info[message.chat.id]["user_info"]["dodge"])
         level_handler(message)
@@ -435,7 +435,7 @@ def relax_handler(message: telebot.types.Message):
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["levelup"]:
+    if info[message.chat.id]["level_up"]:
         bot.send_message(chat_id=message.chat.id,
                          text="Сначала распределите очки характеристик")
     elif info[message.chat.id]["in_battle"]:
