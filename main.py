@@ -1,6 +1,7 @@
 import telebot
 import random
 import pickle
+from math import atan, pi
 from bot_info import bot_token, id_god
 
 enemies = ["Волк", "Лиса", "Медведь"]
@@ -14,6 +15,10 @@ def create_keyboard(list_names):
         item = telebot.types.KeyboardButton(name)
         markup.add(item)
     return markup
+
+
+def chance(n):
+    return atan(n/6)/pi
 
 
 @bot.message_handler(commands=["save"])
@@ -80,14 +85,25 @@ def start_handler(message: telebot.types.Message):
     print(message.chat.id, "in start")
     if message.chat.id not in info:
         info[message.chat.id] = {
-            "user_info": {"exp_now": 0, "exp_need": 10, "lvl": 1, "atk": 2, "def": 0, "hp_now": 10, "hp_max": 10},
-            "enemy_info": {"name": "wolf", "lvl": 1, "atk": 1, "def": 0, "hp_now": 10, "hp_max": 10},
+            "user_info": {"exp_now": 0, "exp_need": 10, "lvl": 1, "atk": 0, "def": 0, "hp_now": 10, "hp_max": 10,
+                          "crit": 0, "crit_chance": 0, "dodge": 0, "dodge_chance": 0, "constitution": 0},
+            "enemy_info": {"name": "wolf", "lvl": 1, "atk": 1, "def": 0, "hp_now": 10, "hp_max": 10,
+                           "crit": 0, "crit_chance": 0, "dodge": 0, "dodge_chance": 0, "constitution": 0},
             "enemy_found": False,
-            "lewelup": False,
+            "levelup": 3,
             "in_battle": False,
             "relax": False
         }
-    if info[message.chat.id]["lewelup"]:
+        bot.send_message(chat_id=message.chat.id,
+                         text=f"""
+"Поднять атаку", чтобы поднять урон от вашей атаки на 1
+"Поднять защиту", чтобы уменьшить входящий урон от врагов на 1
+"Поднять телосложение", чтобы увеличить ваше здоровье на 10
+"Поднять критический удар", чтобы с большим шансом нанести в 2 раза больше урона
+"Поднять уклонение", чтобы с большим шансом уклониться от вражеской атаки
+                         """)
+        level_handler(message)
+    elif info[message.chat.id]["levelup"]:
         bot.send_message(chat_id=message.chat.id,
                          text="Сначала распределите очко навыков")
     elif info[message.chat.id]["in_battle"]:
@@ -114,25 +130,19 @@ def info_handler(message: telebot.types.Message):
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["lewelup"]:
-        markup = create_keyboard(["Поднять атаку", "Поднять защиту и здоровье"])
-        bot.send_message(chat_id=message.chat.id,
-                         text=f"""
+    bot.send_message(chat_id=message.chat.id,
+                     text=f"""
 Уровень: {info[message.chat.id]["user_info"]["lvl"]}
+
 Опыт: {info[message.chat.id]["user_info"]["exp_now"]}/{info[message.chat.id]["user_info"]["exp_need"]}
 Очки здоровья: {info[message.chat.id]["user_info"]["hp_now"]}/{info[message.chat.id]["user_info"]["hp_max"]}
+
 Атака: {info[message.chat.id]["user_info"]["atk"]}
 Защита: {info[message.chat.id]["user_info"]["def"]}
-                         """, reply_markup=markup)
-    else:
-        bot.send_message(chat_id=message.chat.id,
-                         text=f"""
-Уровень: {info[message.chat.id]["user_info"]["lvl"]}
-Опыт: {info[message.chat.id]["user_info"]["exp_now"]}/{info[message.chat.id]["user_info"]["exp_need"]}
-Очки здоровья: {info[message.chat.id]["user_info"]["hp_now"]}/{info[message.chat.id]["user_info"]["hp_max"]}
-Атака: {info[message.chat.id]["user_info"]["atk"]}
-Защита: {info[message.chat.id]["user_info"]["def"]}
-                         """)
+Телосложение: {info[message.chat.id]["user_info"]["constitution"]}
+Критический удар: {info[message.chat.id]["user_info"]["crit"]}
+Уклонение: {info[message.chat.id]["user_info"]["dodge"]}
+                     """)
 
 
 @bot.message_handler(commands=["search"])
@@ -141,7 +151,7 @@ def search_handler(message: telebot.types.Message):
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["lewelup"]:
+    if info[message.chat.id]["levelup"]:
         bot.send_message(chat_id=message.chat.id,
                          text="Сначала распределите очко навыков")
     elif info[message.chat.id]["in_battle"]:
@@ -161,22 +171,50 @@ def search_handler(message: telebot.types.Message):
         else:
             markup = create_keyboard(["Атака", "Искать дальше", "Характеристики", "Отдых", "В начало"])
         info[message.chat.id]["enemy_found"] = True
-        info[message.chat.id]["enemy_info"]["name"] = enemies[random.randrange(0, 3)]
-        info[message.chat.id]["enemy_info"]["lvl"] = random.randrange(info[message.chat.id]["user_info"]["lvl"],
-                                                                      info[message.chat.id]["user_info"]["lvl"] + 3)
-        info[message.chat.id]["enemy_info"]["def"] = random.randrange(0, info[message.chat.id]["enemy_info"]["lvl"])
-        info[message.chat.id]["enemy_info"]["atk"] = info[message.chat.id]["enemy_info"]["lvl"] - \
-                                                     info[message.chat.id]["enemy_info"]["def"]
-        info[message.chat.id]["enemy_info"]["hp_max"] = info[message.chat.id]["enemy_info"]["def"] * 10 + 10
+        enemy = random.randrange(0, 3)
+        info[message.chat.id]["enemy_info"]["name"] = enemies[enemy]
+        if info[message.chat.id]["enemy_info"]["lvl"] == 1:
+            info[message.chat.id]["enemy_info"]["lvl"] = random.randrange(info[message.chat.id]["user_info"]["lvl"],
+                                                                          info[message.chat.id]["user_info"]["lvl"] + 2)
+        else:
+            info[message.chat.id]["enemy_info"]["lvl"] = random.randrange(info[message.chat.id]["user_info"]["lvl"] - 1,
+                                                                          info[message.chat.id]["user_info"]["lvl"] + 2)
+
+        info[message.chat.id]["enemy_info"]["def"] = 0
+        info[message.chat.id]["enemy_info"]["atk"] = 0
+        info[message.chat.id]["enemy_info"]["constitution"] = 0
+        info[message.chat.id]["enemy_info"]["crit"] = 0
+        info[message.chat.id]["enemy_info"]["dodge"] = 0
+
+        rand_list = ["def", "atk", "constitution", "crit", "dodge"]
+        if enemy == 0:
+            rand_list.extend(["atk", "atk", "constitution", "crit"])
+        elif enemy == 1:
+            rand_list.extend(["crit", "crit", "dodge", "dodge"])
+        elif enemy == 2:
+            rand_list.extend(["def", "def", "constitution", "constitution"])
+
+        for i in range(info[message.chat.id]["enemy_info"]["lvl"]*3):
+            info[message.chat.id]["enemy_info"][random.choice(rand_list)] += 1
+
+        info[message.chat.id]["enemy_info"]["hp_max"] = info[message.chat.id]["enemy_info"]["constitution"] * 10 + 10
+        info[message.chat.id]["enemy_info"]["dodge_chance"] = chance(info[message.chat.id]["enemy_info"]["dodge"])
+        info[message.chat.id]["enemy_info"]["crit_chance"] = chance(info[message.chat.id]["enemy_info"]["crit"])
         info[message.chat.id]["enemy_info"]["hp_now"] = info[message.chat.id]["enemy_info"]["hp_max"]
         bot.send_message(chat_id=message.chat.id,
                          text=f"""
 Вы нашли врага
+
 Имя: {info[message.chat.id]["enemy_info"]["name"]}
 Уровень: {info[message.chat.id]["enemy_info"]["lvl"]}
+
 Очки здоровья: {info[message.chat.id]["enemy_info"]["hp_now"]}/{info[message.chat.id]["enemy_info"]["hp_max"]}
+
 Атака: {info[message.chat.id]["enemy_info"]["atk"]}
 Защита: {info[message.chat.id]["enemy_info"]["def"]}
+Телосложение: {info[message.chat.id]["enemy_info"]["constitution"]}
+Критический удар: {info[message.chat.id]["enemy_info"]["crit"]}
+Уклонение: {info[message.chat.id]["enemy_info"]["dodge"]}
                          """, reply_markup=markup)
 
 
@@ -189,7 +227,15 @@ def attack_handler(message: telebot.types.Message):
     if info[message.chat.id]["enemy_found"]:
         markup = create_keyboard(["Атака", "Побег"])
         info[message.chat.id]["in_battle"] = True
-        dmg_to_enemy = max(info[message.chat.id]["user_info"]["atk"] - info[message.chat.id]["enemy_info"]["def"], 0)
+        if random.random() <= info[message.chat.id]["enemy_info"]["dodge_chance"]:
+            dmg_to_enemy = 0
+            bot.send_message(chat_id=message.chat.id, text="Вы промахнулись")
+        else:
+            dmg_to_enemy = max(
+                info[message.chat.id]["user_info"]["atk"] - info[message.chat.id]["enemy_info"]["def"], 0)
+            if random.random() <= info[message.chat.id]["user_info"]["crit_chance"]:
+                dmg_to_enemy *= 2
+                bot.send_message(chat_id=message.chat.id, text="Вы нанесли критический удар")
         info[message.chat.id]["enemy_info"]["hp_now"] -= dmg_to_enemy
         bot.send_message(chat_id=message.chat.id,
                          text=f"""
@@ -208,7 +254,7 @@ def attack_handler(message: telebot.types.Message):
                              """)
             info[message.chat.id]["user_info"]["exp_now"] += info[message.chat.id]["enemy_info"]["lvl"]
             if info[message.chat.id]["user_info"]["exp_now"] >= info[message.chat.id]["user_info"]["exp_need"]:
-                info[message.chat.id]["lewelup"] = True
+                info[message.chat.id]["levelup"] = 3
                 info[message.chat.id]["user_info"]["lvl"] += 1
                 info[message.chat.id]["user_info"]["exp_now"] = 0
                 info[message.chat.id]["user_info"]["exp_need"] = info[message.chat.id]["user_info"]["lvl"] * 10
@@ -216,15 +262,26 @@ def attack_handler(message: telebot.types.Message):
                                  text=f"""
 Поздравляем, вы получили новый уровень
 
-"Поднять атаку", чтобы поднять атаку на 1
-"Поднять защиту и здоровье", чтобы поднять защиту на 1 и здоровье на 10
+"Поднять атаку", чтобы поднять урон от вашей атаки на 1
+"Поднять защиту", чтобы уменьшить входящий урон от врагов на 1
+"Поднять телосложение", чтобы увеличить ваше здоровье на 10
+"Поднять критический удар", чтобы с большим шансом нанести в 2 раза больше урона
+"Поднять уклонение", чтобы с большим шансом уклониться от вражеской атаки
                                  """)
-                info_handler(message)
+                level_handler(message)
             else:
                 info_handler(message)
                 start_handler(message)
         else:
-            dmg_to_user = max(info[message.chat.id]["enemy_info"]["atk"] - info[message.chat.id]["user_info"]["def"], 0)
+            if random.random() <= info[message.chat.id]["user_info"]["dodge_chance"]:
+                dmg_to_user = 0
+                bot.send_message(chat_id=message.chat.id, text="Противник промахнулся")
+            else:
+                dmg_to_user = max(
+                    info[message.chat.id]["enemy_info"]["atk"] - info[message.chat.id]["user_info"]["def"], 0)
+                if random.random() <= info[message.chat.id]["enemy_info"]["crit_chance"]:
+                    dmg_to_enemy *= 2
+                    bot.send_message(chat_id=message.chat.id, text="Противник нанес критический удар")
             info[message.chat.id]["user_info"]["hp_now"] -= dmg_to_user
             if info[message.chat.id]["user_info"]["hp_now"] > 0:
                 markup = create_keyboard(["Атака", "Побег"])
@@ -235,7 +292,7 @@ def attack_handler(message: telebot.types.Message):
 Вы: {info[message.chat.id]["user_info"]["hp_now"]}/{info[message.chat.id]["user_info"]["hp_max"]}
                                  """, reply_markup=markup)
             else:
-                markup = create_keyboard(["Начать сначала"])
+                markup = create_keyboard(["В начало"])
                 bot.send_message(chat_id=message.chat.id,
                                  text=f"""
 Вам нанесли {dmg_to_user} ед. урона
@@ -249,31 +306,105 @@ def attack_handler(message: telebot.types.Message):
         bot.send_message(chat_id=message.chat.id, text="Добыча не найдена")
 
 
-@bot.message_handler(commands=["point_to_attack"])
-def plus_attack_handler(message: telebot.types.Message):
-    print(message.chat.id, "in lwlup +a")
+@bot.message_handler(commands=["level_up"])
+def level_handler(message: telebot.types.Message):
+    print(message.chat.id, "in level")
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["lewelup"]:
-        info[message.chat.id]["lewelup"] = False
-        info[message.chat.id]["user_info"]["atk"] += 1
+    if info[message.chat.id]["levelup"]:
+        info[message.chat.id]["user_info"]["hp_now"] = info[message.chat.id]["user_info"]["hp_max"]
         info_handler(message)
-        start_handler(message)
+        markup = create_keyboard(["Поднять атаку", "Поднять защиту", "Поднять телосложение",
+                                  "Поднять критический удар", "Поднять уклонение"])
+        bot.send_message(chat_id=message.chat.id,
+                         text=f"""
+Осталось распределить {info[message.chat.id]["levelup"]} ед. характеристик
+                         """, reply_markup=markup)
+    else:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Возвращайтесь, когда поднимите уровень")
+        if not info[message.chat.id]["in_battle"]:
+            start_handler(message)
+
+
+@bot.message_handler(commands=["point_to_attack"])
+def plus_attack_handler(message: telebot.types.Message):
+    print(message.chat.id, "in lwlup +att")
+    if message.chat.id not in info:
+        help_handler(message)
+        return 0
+    if info[message.chat.id]["levelup"]:
+        info[message.chat.id]["levelup"] -= 1
+        info[message.chat.id]["user_info"]["atk"] += 1
+        level_handler(message)
+    else:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Возвращайтесь, когда поднимите уровень")
 
 
 @bot.message_handler(commands=["point_to_defence"])
 def plus_defence_handler(message: telebot.types.Message):
-    print(message.chat.id, "in lwlup +d")
+    print(message.chat.id, "in lwlup +def")
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["lewelup"]:
-        info[message.chat.id]["lewelup"] = False
+    if info[message.chat.id]["levelup"]:
+        info[message.chat.id]["levelup"] -= 1
         info[message.chat.id]["user_info"]["def"] += 1
+        level_handler(message)
+    else:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Возвращайтесь, когда поднимите уровень")
+
+
+@bot.message_handler(commands=["point_to_constitution"])
+def plus_constitution_handler(message: telebot.types.Message):
+    print(message.chat.id, "in lwlup +con")
+    if message.chat.id not in info:
+        help_handler(message)
+        return 0
+    if info[message.chat.id]["levelup"]:
+        info[message.chat.id]["levelup"] -= 1
+        info[message.chat.id]["user_info"]["constitution"] += 1
         info[message.chat.id]["user_info"]["hp_max"] += 10
-        info_handler(message)
-        start_handler(message)
+        info[message.chat.id]["user_info"]["hp_now"] = info[message.chat.id]["user_info"]["hp_max"]
+        level_handler(message)
+    else:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Возвращайтесь, когда поднимите уровень")
+
+
+@bot.message_handler(commands=["point_to_crit"])
+def plus_crit_handler(message: telebot.types.Message):
+    print(message.chat.id, "in lwlup +crit")
+    if message.chat.id not in info:
+        help_handler(message)
+        return 0
+    if info[message.chat.id]["levelup"]:
+        info[message.chat.id]["levelup"] -= 1
+        info[message.chat.id]["user_info"]["crit"] += 1
+        info[message.chat.id]["user_info"]["crit_chance"] = chance(info[message.chat.id]["user_info"]["crit"])
+        level_handler(message)
+    else:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Возвращайтесь, когда поднимите уровень")
+
+
+@bot.message_handler(commands=["point_to_dodge"])
+def plus_dodge_handler(message: telebot.types.Message):
+    print(message.chat.id, "in lwlup +dodge")
+    if message.chat.id not in info:
+        help_handler(message)
+        return 0
+    if info[message.chat.id]["levelup"]:
+        info[message.chat.id]["levelup"] -= 1
+        info[message.chat.id]["user_info"]["dodge"] += 1
+        info[message.chat.id]["user_info"]["dodge_chance"] = chance(info[message.chat.id]["user_info"]["dodge"])
+        level_handler(message)
+    else:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Возвращайтесь, когда поднимите уровень")
 
 
 @bot.message_handler(commands=["escape"])
@@ -298,7 +429,7 @@ def relax_handler(message: telebot.types.Message):
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if not info[message.chat.id]["in_battle"] and not info[message.chat.id]["lewelup"]:
+    if not info[message.chat.id]["in_battle"] and not info[message.chat.id]["levelup"]:
         info[message.chat.id]["user_info"]["hp_now"] = info[message.chat.id]["user_info"]["hp_max"]
         info[message.chat.id]["relax"] = True
         start_handler(message)
@@ -318,12 +449,18 @@ def text_message_handler(message: telebot.types.Message):
         relax_handler(message)
     elif message.text == "Побег":
         escape_handler(message)
-    elif message.text == "В начало" or message.text == "Начать сначала":
+    elif message.text == "В начало":
         start_handler(message)
     elif message.text == "Поднять атаку":
         plus_attack_handler(message)
-    elif message.text == "Поднять защиту и здоровье":
+    elif message.text == "Поднять защиту":
         plus_defence_handler(message)
+    elif message.text == "Поднять телосложение":
+        plus_constitution_handler(message)
+    elif message.text == "Поднять критический удар":
+        plus_crit_handler(message)
+    elif message.text == "Поднять уклонение":
+        plus_dodge_handler(message)
     else:
         help_handler(message)
 
