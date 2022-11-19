@@ -29,8 +29,9 @@ def save_handler(message: telebot.types.Message):
                 pickle.dump(info, out)
             print(info)
             bot.send_message(chat_id=message.chat.id, text="Успешно")
-        except Exception:
-            bot.send_message(chat_id=message.chat.id, text="Не успешно")
+        except Exception as e:
+            print(e)
+            bot.send_message(chat_id=message.chat.id, text=f"Не успешно, {e}")
     else:
         bot.send_message(chat_id=message.chat.id, text="Нет доступа")
 
@@ -44,8 +45,9 @@ def save_handler(message: telebot.types.Message):
                 info = pickle.load(inp)
             print(info)
             bot.send_message(chat_id=message.chat.id, text="Успешно")
-        except Exception:
-            bot.send_message(chat_id=message.chat.id, text="Не успешно")
+        except Exception as e:
+            print(e)
+            bot.send_message(chat_id=message.chat.id, text=f"Не успешно, {e}")
     else:
         bot.send_message(chat_id=message.chat.id, text="Нет доступа")
 
