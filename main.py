@@ -331,7 +331,7 @@ def attack_handler(message: telebot.types.Message):
             bot.send_message(chat_id=message.chat.id,
                              text=f"""
 Поздравляем, вы победили врага
-Получено {info[message.chat.id]["enemy_info"]["lvl"]} ед. опыта
+Вы получили {info[message.chat.id]["enemy_info"]["lvl"]} ед. опыта
                              """)
             info[message.chat.id]["user_info"]["exp_now"] += info[message.chat.id]["enemy_info"]["lvl"]
             if info[message.chat.id]["user_info"]["exp_now"] >= info[message.chat.id]["user_info"]["exp_need"]:
