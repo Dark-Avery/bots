@@ -99,7 +99,8 @@ def rating_handler(message: telebot.types.Message):
         bot.send_message(chat_id=message.chat.id,
                          text="Сначала вернитесь домой")
     else:
-        temp = sorted([info[user_id]["user_info"] for user_id in info], key=lambda x: (x["lvl"], x["exp_now"]))
+        temp = sorted([info[user_id]["user_info"] for user_id in info],
+                      key=lambda x: (x["lvl"], x["exp_now"]), reverse=True)
         print(temp)
         top = "\n".join([str(temp[i]["name"]) + ": " + str(temp[i]["lvl"]) for i in range(min(10, len(temp)))])
         bot.send_message(chat_id=message.chat.id,
