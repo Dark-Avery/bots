@@ -105,7 +105,7 @@ def start_handler(message: telebot.types.Message):
         level_handler(message)
     elif info[message.chat.id]["levelup"]:
         bot.send_message(chat_id=message.chat.id,
-                         text="Сначала распределите очко навыков")
+                         text="Сначала распределите очки характеристик")
     elif info[message.chat.id]["in_battle"]:
         bot.send_message(chat_id=message.chat.id,
                          text="Вы в бою")
@@ -153,18 +153,17 @@ def search_handler(message: telebot.types.Message):
         return 0
     if info[message.chat.id]["levelup"]:
         bot.send_message(chat_id=message.chat.id,
-                         text="Сначала распределите очко навыков")
+                         text="Сначала распределите очки характеристик")
     elif info[message.chat.id]["in_battle"]:
         bot.send_message(chat_id=message.chat.id,
                          text="Вы в бою")
-    elif random.randrange(1, 10) > 5:
+    elif random.randrange(1, 11) >= 5:
         info[message.chat.id]["enemy_found"] = False
         if info[message.chat.id]["user_info"]["hp_now"] == info[message.chat.id]["user_info"]["hp_max"]:
             markup = create_keyboard(["Искать дальше", "Характеристики", "В начало"])
         else:
             markup = create_keyboard(["Искать дальше", "Характеристики", "Отдых", "В начало"])
-        bot.send_message(chat_id=message.chat.id,
-                         text="Вы не нашли врага", reply_markup=markup)
+        bot.send_message(chat_id=message.chat.id, text="Вы не нашли врага", reply_markup=markup)
     else:
         if info[message.chat.id]["user_info"]["hp_now"] == info[message.chat.id]["user_info"]["hp_max"]:
             markup = create_keyboard(["Атака", "Искать дальше", "Характеристики", "В начало"])
@@ -173,7 +172,7 @@ def search_handler(message: telebot.types.Message):
         info[message.chat.id]["enemy_found"] = True
         enemy = random.randrange(0, 3)
         info[message.chat.id]["enemy_info"]["name"] = enemies[enemy]
-        if info[message.chat.id]["enemy_info"]["lvl"] == 1:
+        if info[message.chat.id]["user_info"]["lvl"] == 1:
             info[message.chat.id]["enemy_info"]["lvl"] = random.randrange(info[message.chat.id]["user_info"]["lvl"],
                                                                           info[message.chat.id]["user_info"]["lvl"] + 2)
         else:
@@ -224,8 +223,10 @@ def attack_handler(message: telebot.types.Message):
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if info[message.chat.id]["enemy_found"]:
-        markup = create_keyboard(["Атака", "Побег"])
+    if info[message.chat.id]["levelup"]:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Сначала распределите очки характеристик")
+    elif info[message.chat.id]["enemy_found"]:
         info[message.chat.id]["in_battle"] = True
         if random.random() <= info[message.chat.id]["enemy_info"]["dodge_chance"]:
             dmg_to_enemy = 0
@@ -323,8 +324,9 @@ def level_handler(message: telebot.types.Message):
                          """, reply_markup=markup)
     else:
         bot.send_message(chat_id=message.chat.id,
-                         text="Возвращайтесь, когда поднимите уровень")
+                         text="Возвращайтесь, когда поднимете уровень")
         if not info[message.chat.id]["in_battle"]:
+            info_handler(message)
             start_handler(message)
 
 
@@ -421,6 +423,8 @@ def escape_handler(message: telebot.types.Message):
 Очки здоровья - {info[message.chat.id]["user_info"]["hp_now"]}/{info[message.chat.id]["user_info"]["hp_max"]}
                          """)
         start_handler(message)
+    else:
+        bot.send_message(chat_id=message.chat.id, text="Вы не в бою, вам неоткуда сбегать")
 
 
 @bot.message_handler(commands=["relax"])
@@ -429,7 +433,13 @@ def relax_handler(message: telebot.types.Message):
     if message.chat.id not in info:
         help_handler(message)
         return 0
-    if not info[message.chat.id]["in_battle"] and not info[message.chat.id]["levelup"]:
+    if info[message.chat.id]["levelup"]:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Сначала распределите очки характеристик")
+    elif info[message.chat.id]["in_battle"]:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Вы в бою")
+    else:
         info[message.chat.id]["user_info"]["hp_now"] = info[message.chat.id]["user_info"]["hp_max"]
         info[message.chat.id]["relax"] = True
         start_handler(message)
