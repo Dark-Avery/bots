@@ -1,6 +1,7 @@
 import telebot
 import random
 import pickle
+from re import match
 from math import atan, pi
 from bot_info import bot_token, id_god
 
@@ -19,6 +20,36 @@ def create_keyboard(list_names):
 
 def chance(n):
     return atan(n/6)/pi
+
+
+def is_ok(text):
+    mat = match("""^[а-яА-ЯёЁa-zA-Z0-9 _-]+$""", text)
+    return bool(mat) and 3 <= len(text) <= 10
+
+
+def get_name(message: telebot.types.Message):
+    print(message.chat.id, "in get_name")
+    try:
+        info[message.chat.id]["user_info"]["name"] = message.text
+        if not is_ok(message.text):
+            info[message.chat.id]["user_info"]["name"] = ""
+            raise ValueError
+        for i in info:
+            if info[i]["user_info"]["name"] == message.text:
+                if i == message.chat.id:
+                    continue
+                info[message.chat.id]["user_info"]["name"] = ""
+                raise IOError
+        start_handler(message)
+    except IOError:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Имя уже занято, повторите попытку")
+        bot.register_next_step_handler(message, get_name)
+    except Exception as e:
+        print(e)
+        bot.send_message(chat_id=message.chat.id,
+                         text="Введено некорректное имя, повторите попытку")
+        bot.register_next_step_handler(message, get_name)
 
 
 @bot.message_handler(commands=["save"])
@@ -52,6 +83,33 @@ def save_handler(message: telebot.types.Message):
         bot.send_message(chat_id=message.chat.id, text="Нет доступа")
 
 
+@bot.message_handler(commands=["rating"])
+def rating_handler(message: telebot.types.Message):
+    print(message.chat.id, "in rating")
+    if message.chat.id not in info:
+        help_handler(message)
+        return 0
+    if info[message.chat.id]["level_up"]:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Сначала распределите очки характеристик")
+    elif info[message.chat.id]["in_battle"]:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Вы в бою")
+    elif not info[message.chat.id]["in_home"]:
+        bot.send_message(chat_id=message.chat.id,
+                         text="Сначала вернитесь домой")
+    else:
+        temp = sorted([info[user_id]["user_info"] for user_id in info], key=lambda x: (x["lvl"], x["exp_now"]))
+        print(temp)
+        top = "\n".join([str(temp[i]["name"]) + ": " + str(temp[i]["lvl"]) for i in range(min(10, len(temp)))])
+        bot.send_message(chat_id=message.chat.id,
+                         text=f"""
+Топ 10
+
+{top}
+                         """)
+
+
 @bot.message_handler(commands=["help"])
 def help_handler(message: telebot.types.Message):
     print(message.chat.id, "in help")
@@ -83,19 +141,36 @@ def help_handler(message: telebot.types.Message):
 
 
 @bot.message_handler(commands=["start"])
-def start_handler(message: telebot.types.Message):
-    print(message.chat.id, "in start")
+def pre_start_handler(message: telebot.types.Message):
+    print(message.chat.id, "in pre_start")
     if message.chat.id not in info:
         info[message.chat.id] = {
-            "user_info": {"exp_now": 0, "exp_need": 10, "lvl": 1, "atk": 0, "def": 0, "hp_now": 10, "hp_max": 10,
+            "user_info": {"name": "", "exp_now": 0, "exp_need": 10, "lvl": 0, "atk": 0, "def": 0, "hp_now": 10,
+                          "hp_max": 10,
                           "crit": 0, "crit_chance": 0, "dodge": 0, "dodge_chance": 0, "constitution": 0},
             "enemy_info": {"name": "wolf", "lvl": 1, "atk": 1, "def": 0, "hp_now": 10, "hp_max": 10,
                            "crit": 0, "crit_chance": 0, "dodge": 0, "dodge_chance": 0, "constitution": 0},
             "enemy_found": False,
             "level_up": 3,
             "in_battle": False,
-            "relax": False
+            "relax": False,
+            "in_home": False
         }
+        msg = bot.send_message(chat_id=message.chat.id,
+                               text=f"""
+Введите уникальное имя
+Оно может содержать латиницу, кириллицу, цифры и знаки "-" и "_"
+Длина от 3 до 10 символов
+                                """, reply_markup=telebot.types.ReplyKeyboardRemove())
+        bot.register_next_step_handler(msg, get_name)
+    else:
+        start_handler(message)
+
+
+def start_handler(message: telebot.types.Message):
+    print(message.chat.id, "in start")
+    if info[message.chat.id]["user_info"]["lvl"] == 0:
+        info[message.chat.id]["user_info"]["lvl"] += 1
         bot.send_message(chat_id=message.chat.id,
                          text=f"""
 "Поднять атаку", чтобы поднять урон от вашей атаки на 1
@@ -112,10 +187,11 @@ def start_handler(message: telebot.types.Message):
         bot.send_message(chat_id=message.chat.id,
                          text="Вы в бою")
     else:
+        info[message.chat.id]["in_home"] = True
         if info[message.chat.id]["user_info"]["hp_now"] == info[message.chat.id]["user_info"]["hp_max"]:
-            markup = create_keyboard(["Охота", "Характеристики"])
+            markup = create_keyboard(["Охота", "Характеристики", "Рейтинг"])
         else:
-            markup = create_keyboard(["Охота", "Характеристики", "Отдых"])
+            markup = create_keyboard(["Охота", "Характеристики", "Отдых", "Рейтинг"])
         if not info[message.chat.id]["relax"]:
             bot.send_message(chat_id=message.chat.id, text="Вы дома", reply_markup=markup)
         else:
@@ -134,6 +210,7 @@ def info_handler(message: telebot.types.Message):
         return 0
     bot.send_message(chat_id=message.chat.id,
                      text=f"""
+Имя: {info[message.chat.id]["user_info"]["name"]}
 Уровень: {info[message.chat.id]["user_info"]["lvl"]}
 
 Опыт: {info[message.chat.id]["user_info"]["exp_now"]}/{info[message.chat.id]["user_info"]["exp_need"]}
@@ -217,6 +294,7 @@ def search_handler(message: telebot.types.Message):
 Критический удар: {info[message.chat.id]["enemy_info"]["crit"]}
 Уклонение: {info[message.chat.id]["enemy_info"]["dodge"]}
                          """, reply_markup=markup)
+    info[message.chat.id]["in_home"] = False
 
 
 @bot.message_handler(commands=["attack"])
@@ -462,7 +540,9 @@ def text_message_handler(message: telebot.types.Message):
     elif message.text == "Побег":
         escape_handler(message)
     elif message.text == "В начало":
-        start_handler(message)
+        pre_start_handler(message)
+    elif message.text == "Рейтинг":
+        rating_handler(message)
     elif message.text == "Поднять атаку":
         plus_attack_handler(message)
     elif message.text == "Поднять защиту":
