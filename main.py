@@ -340,7 +340,9 @@ def attack_handler(message: telebot.types.Message):
             dmg_to_enemy = int(
                 info[message.chat.id]["user_info"]["atk"] * (1 - info[message.chat.id]["enemy_info"]["real_def"]))
             if random.random() <= info[message.chat.id]["user_info"]["crit_chance"]:
-                dmg_to_enemy *= 2
+                dmg_to_enemy = int(
+                    info[message.chat.id]["user_info"]["atk"] * 2 * (
+                            1 - info[message.chat.id]["enemy_info"]["real_def"]))
                 bot.send_message(chat_id=message.chat.id, text="Вы нанесли критический удар")
         info[message.chat.id]["enemy_info"]["hp_now"] -= dmg_to_enemy
         bot.send_message(chat_id=message.chat.id,
@@ -386,7 +388,9 @@ def attack_handler(message: telebot.types.Message):
                 dmg_to_user = int(
                     info[message.chat.id]["enemy_info"]["atk"] * (1 - info[message.chat.id]["user_info"]["real_def"]))
                 if random.random() <= info[message.chat.id]["enemy_info"]["crit_chance"]:
-                    dmg_to_user *= 2
+                    dmg_to_user = int(
+                        info[message.chat.id]["enemy_info"]["atk"] * 2 * (
+                                    1 - info[message.chat.id]["user_info"]["real_def"]))
                     bot.send_message(chat_id=message.chat.id, text="Противник нанес критический удар")
             info[message.chat.id]["user_info"]["hp_now"] -= dmg_to_user
             if info[message.chat.id]["user_info"]["hp_now"] > 0:
