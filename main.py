@@ -59,6 +59,9 @@ def get_name(message: telebot.types.Message):
 @bot.message_handler(commands=["test"])
 def test_handler(message: telebot.types.Message):
     if message.chat.id == id_god:
+        if message.chat.id not in info:
+            bot.send_message(chat_id=message.chat.id, text="Создай персонажа")
+            return 0
         info[message.chat.id]["user_info"]["lvl"] += 1
         info[message.chat.id]["level_up"] = 3
         level_handler(message)
