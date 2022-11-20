@@ -237,7 +237,7 @@ def search_handler(message: telebot.types.Message):
     elif info[message.chat.id]["in_battle"]:
         bot.send_message(chat_id=message.chat.id,
                          text="Вы в бою")
-    elif random.randrange(1, 11) >= 5:
+    elif random.random() <= 0.4:
         info[message.chat.id]["enemy_found"] = False
         if info[message.chat.id]["user_info"]["hp_now"] == info[message.chat.id]["user_info"]["hp_max"]:
             markup = create_keyboard(["Искать дальше", "Характеристики", "В начало"])
